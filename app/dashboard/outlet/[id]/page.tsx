@@ -177,7 +177,8 @@ function BarcodeSection({ barbershopId, shopName }: { barbershopId: string; shop
   const [loading, setLoading]     = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [generating, setGenerating] = useState(false);
-  const printRef = useRef<HTMLDivElement>(null);
+  const printRef  = useRef<HTMLDivElement>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   // Fetch QR token dari API
   const fetchQr = useCallback(async () => {
@@ -221,25 +222,30 @@ function BarcodeSection({ barbershopId, shopName }: { barbershopId: string; shop
   };
 
   const handlePrint = () => {
-    if (!printRef.current) return;
-    const win = window.open('', '_blank');
-    if (!win) return;
-    win.document.write(`<html><head><title>QR Absensi – ${shopName}</title>
+    if (!printRef.current || !iframeRef.current) return;
+    const iframe = iframeRef.current;
+    const doc = iframe.contentDocument || iframe.contentWindow?.document;
+    if (!doc) return;
+    doc.open();
+    doc.write(`<html><head><title>QR Absensi \u2013 ${shopName}</title>
       <style>body{display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0}
       .w{text-align:center;padding:40px}h2{font-family:sans-serif;color:#1E3A8A;margin-bottom:16px}
       p{font-family:monospace;font-size:11px;color:#6B7280;margin-top:12px;word-break:break-all}
       </style></head><body><div class="w">
-      <h2>QR Absensi – ${shopName}</h2>
+      <h2>QR Absensi \u2013 ${shopName}</h2>
       ${printRef.current.innerHTML}
       <p>${qrToken}</p></div></body></html>`);
-    win.document.close();
-    win.print();
+    doc.close();
+    iframe.contentWindow?.focus();
+    iframe.contentWindow?.print();
   };
 
   useEffect(() => { fetchQr(); }, [fetchQr]);
 
   return (
     <div className="bg-white rounded-[12px] border border-[#F0F0F0] p-6">
+      {/* Hidden iframe for printing – no new window */}
+      <iframe ref={iframeRef} style={{ display: 'none' }} title="print-frame" />
       <h2 className="text-[15px] font-semibold text-[#374151] mb-5">Generate Barcode</h2>
 
       <div className="flex justify-center">
