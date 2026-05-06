@@ -455,7 +455,7 @@ export default function ExportPage() {
       const rows = buildGeneralReport(reportData);
       const worksheetData = rows.map((r, i) => ({
         No: i + 1,
-        'Nama Barbershop': r.barbershopName,
+        'Cabang Barbershop': r.barbershopName,
         'Jumlah Status IN (On Time)': r.onTimeIn,
         'Jumlah Status OUT (On Time)': r.onTimeOut,
       }));
@@ -554,7 +554,7 @@ export default function ExportPage() {
         autoTable(doc, {
           startY: 26,
           margin: { top: 26, bottom: 18 },
-          head: [['No', 'Nama Barbershop', 'Status IN (On Time)', 'Status OUT (On Time)']],
+          head: [['No', 'Cabang Barbershop', 'Status IN (On Time)', 'Status OUT (On Time)']],
           body: rows.map((r, i) => [i + 1, r.barbershopName, r.onTimeIn, r.onTimeOut]),
           styles: { fontSize: 9, cellPadding: 4 },
           headStyles: { fillColor: [30, 58, 138], textColor: 255, fontStyle: 'bold' },
@@ -724,7 +724,7 @@ export default function ExportPage() {
           <div className="w-8 h-8 bg-[#D1FAE5] rounded-md flex items-center justify-center">
             <Download className="w-4 h-4 text-[#16A34A]" />
           </div>
-          <h3 className="text-[20px] font-bold text-[#1E3A8A]">Finalisasi dan Download</h3>
+          <h3 className="text-[20px] font-bold text-[#1E3A8A]">Laporan Detail</h3>
         </div>
         <p className="text-[#6B7280] text-[14px] mb-2">
           Pilih format file yang akan didownload sesuai kebutuhan
@@ -771,7 +771,7 @@ export default function ExportPage() {
           <h3 className="text-[20px] font-bold text-[#1E3A8A]">Laporan General</h3>
         </div>
         <p className="text-[#6B7280] text-[14px] mb-4">
-          Rekapan ringkas per barbershop — jumlah kehadiran tepat waktu (IN &amp; OUT)
+          Rekapan ringkas per cabang barbershop
         </p>
 
         <div className="flex items-center gap-4 flex-wrap mt-2">
