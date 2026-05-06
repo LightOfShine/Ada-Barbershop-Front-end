@@ -42,6 +42,18 @@ const formatDate = (date: Date): string => {
   return `${y}-${m}-${d}`;
 };
 
+/**
+ * Mengirim endDate sebagai hari BERIKUTNYA (exclusive upper bound).
+ * Ini memastikan seluruh data di hari endDate ter-query oleh backend,
+ * karena backend biasanya menggunakan `< endDate` (bukan `<=`).
+ * Fix untuk bug laporan kosong saat startDate === endDate.
+ */
+const formatEndDateForApi = (date: Date): string => {
+  const next = new Date(date);
+  next.setDate(next.getDate() + 1);
+  return formatDate(next);
+};
+
 const formatDisplayDate = (date: Date | null): string => {
   if (!date) return '-';
   return date.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
@@ -67,7 +79,8 @@ export default function ExportPage() {
       setError('Pilih rentang tanggal terlebih dahulu.');
       return;
     }
-    if (startDate > endDate) {
+    // Bandingkan tanggal saja (bukan timestamp) agar startDate === endDate tetap valid
+    if (formatDate(startDate) > formatDate(endDate)) {
       setError('Tanggal mulai tidak boleh lebih besar dari tanggal akhir.');
       return;
     }
@@ -81,7 +94,9 @@ export default function ExportPage() {
       const token = localStorage.getItem('token') || '';
       const params = new URLSearchParams({
         startDate: formatDate(startDate),
-        endDate: formatDate(endDate),
+        // Kirim endDate+1 hari (exclusive upper bound) agar backend juga
+        // meng-include data di hari endDate yang dipilih user.
+        endDate: formatEndDateForApi(endDate),
       });
 
       const res = await fetch(
@@ -101,11 +116,27 @@ export default function ExportPage() {
 
       const raw = await res.json();
       // Normalise: backend might wrap data in { data: [...] } or return array directly
-      const data: AttendanceRecord[] = Array.isArray(raw)
+      const allData: AttendanceRecord[] = Array.isArray(raw)
         ? raw
         : Array.isArray(raw?.data)
           ? raw.data
           : [];
+
+      // ── Client-side filtering ────────────────────────────────────────────────
+      // Backend terkadang tidak memfilter tanggal dengan benar (mis. timezone).
+      // Filter ulang di frontend untuk memastikan hanya data dalam rentang
+      // startDate s.d. endDate yang ditampilkan.
+      const start = formatDate(startDate); // 'YYYY-MM-DD'
+      const end   = formatDate(endDate);   // 'YYYY-MM-DD'
+
+      const data = allData.filter((r) => {
+        // r.date bisa berupa 'YYYY-MM-DD' atau ISO string '2026-05-02T...'.
+        // Ambil 10 karakter pertama agar selalu dalam format 'YYYY-MM-DD'.
+        const recordDate = r.date ? r.date.slice(0, 10) : '';
+        return recordDate >= start && recordDate <= end;
+      });
+      // ────────────────────────────────────────────────────────────────────────
+
       setReportData(data);
       setRecordCount(data.length);
       setIsReady(true);
