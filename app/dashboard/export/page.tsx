@@ -34,6 +34,31 @@ interface AttendanceRecord {
   checkOutStatus: string;
 }
 
+interface GeneralReportRow {
+  barbershopName: string;
+  onTimeIn: number;
+  onTimeOut: number;
+}
+
+/**
+ * Agregat data per barbershop:
+ * hitung jumlah checkInStatus === 'ON_TIME' dan checkOutStatus === 'ON_TIME'.
+ * Nilai status dari backend bisa 'ON_TIME', 'on_time', atau 'ONTIME' —
+ * pakai toLowerCase + includes('on_time') agar case-insensitive.
+ */
+const buildGeneralReport = (data: AttendanceRecord[]): GeneralReportRow[] => {
+  const map = new Map<string, GeneralReportRow>();
+  for (const r of data) {
+    const key = r.branchName || 'Unknown';
+    if (!map.has(key)) map.set(key, { barbershopName: key, onTimeIn: 0, onTimeOut: 0 });
+    const row = map.get(key)!;
+    if ((r.checkInStatus ?? '').toLowerCase() === 'on_time') row.onTimeIn += 1;
+    if ((r.checkOutStatus ?? '').toLowerCase() === 'on_time') row.onTimeOut += 1;
+  }
+  // Urutkan abjad
+  return Array.from(map.values()).sort((a, b) => a.barbershopName.localeCompare(b.barbershopName));
+};
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const formatDate = (date: Date): string => {
   const y = date.getFullYear();
@@ -417,6 +442,164 @@ export default function ExportPage() {
     };
   };
 
+  // ─── Export General Report — Excel ─────────────────────────────────────────
+  const [isDownloadingGeneralExcel, setIsDownloadingGeneralExcel] = useState(false);
+
+  const handleExportGeneralExcel = () => {
+    if (!reportData.length) {
+      alert('Tidak ada data. Klik "Process Report" terlebih dahulu.');
+      return;
+    }
+    setIsDownloadingGeneralExcel(true);
+    try {
+      const rows = buildGeneralReport(reportData);
+      const worksheetData = rows.map((r, i) => ({
+        No: i + 1,
+        'Nama Barbershop': r.barbershopName,
+        'Jumlah Status IN (On Time)': r.onTimeIn,
+        'Jumlah Status OUT (On Time)': r.onTimeOut,
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(worksheetData);
+      // Lebar kolom otomatis
+      ws['!cols'] = Object.keys(worksheetData[0] || {}).map((k) => ({ wch: Math.max(k.length + 2, 18) }));
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Laporan General');
+
+      const wbOut = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+      const blob = new Blob([wbOut], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+      downloadBlob(blob, `laporan-general_${formatDate(startDate!)}_sd_${formatDate(endDate!)}.xlsx`);
+    } catch (e) {
+      console.error('General Excel error:', e);
+      alert('Gagal membuat file Excel. Periksa console untuk detail.');
+    } finally {
+      setIsDownloadingGeneralExcel(false);
+    }
+  };
+
+  // ─── Export General Report — PDF ────────────────────────────────────────────
+  const [isDownloadingGeneralPDF, setIsDownloadingGeneralPDF] = useState(false);
+
+  const handleExportGeneralPDF = () => {
+    if (!reportData.length) {
+      alert('Tidak ada data. Klik "Process Report" terlebih dahulu.');
+      return;
+    }
+
+    const storedUser = localStorage.getItem('user');
+    const parsedUser = storedUser ? JSON.parse(storedUser) : null;
+    const generatedBy = parsedUser?.name || parsedUser?.email || parsedUser?.username || 'Ada Barbershop System';
+
+    setIsDownloadingGeneralPDF(true);
+
+    const rows = buildGeneralReport(reportData);
+
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.src = '/logo.png';
+
+    const renderPDF = (logoBase64: string | null) => {
+      try {
+        const doc = new jsPDF({ orientation: 'portrait' });
+        const pageW = doc.internal.pageSize.getWidth();
+        const pageH = doc.internal.pageSize.getHeight();
+
+        const now = new Date();
+        const generatedAt = now.toLocaleString('id-ID', {
+          day: '2-digit', month: 'long', year: 'numeric',
+          hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+        });
+
+        const drawHeaderFooter = (data: { pageNumber: number }) => {
+          // Header
+          doc.setFillColor(255, 255, 255);
+          doc.rect(0, 0, pageW, 20, 'F');
+          if (logoBase64) {
+            const logoH = 14;
+            const naturalRatio = img.naturalWidth / img.naturalHeight || 1;
+            const logoW = naturalRatio * logoH;
+            doc.addImage(logoBase64, 'PNG', 10, 3, logoW, logoH);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(12);
+            doc.setTextColor(30, 58, 138);
+            doc.text('Laporan General — Ada Barbershop', 10 + logoW + 6, 12);
+          } else {
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(12);
+            doc.setTextColor(30, 58, 138);
+            doc.text('Laporan General — Ada Barbershop', 10, 12);
+          }
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(8);
+          doc.setTextColor(100, 100, 100);
+          doc.text(`Dibuat: ${generatedAt}`, pageW - 10, 12, { align: 'right' });
+
+          // Footer
+          doc.setDrawColor(200, 200, 200);
+          doc.setLineWidth(0.3);
+          doc.line(10, pageH - 12, pageW - 10, pageH - 12);
+          doc.setFont('helvetica', 'italic');
+          doc.setFontSize(7.5);
+          doc.setTextColor(120, 120, 120);
+          doc.text(`Generated at: ${generatedAt}`, 10, pageH - 6);
+          doc.setFont('helvetica', 'normal');
+          doc.text(`Halaman ${data.pageNumber}`, pageW / 2, pageH - 6, { align: 'center' });
+          doc.setFont('helvetica', 'italic');
+          doc.text(`Generated by: ${generatedBy}`, pageW - 10, pageH - 6, { align: 'right' });
+          doc.setTextColor(0, 0, 0);
+        };
+
+        autoTable(doc, {
+          startY: 26,
+          margin: { top: 26, bottom: 18 },
+          head: [['No', 'Nama Barbershop', 'Status IN (On Time)', 'Status OUT (On Time)']],
+          body: rows.map((r, i) => [i + 1, r.barbershopName, r.onTimeIn, r.onTimeOut]),
+          styles: { fontSize: 9, cellPadding: 4 },
+          headStyles: { fillColor: [30, 58, 138], textColor: 255, fontStyle: 'bold' },
+          alternateRowStyles: { fillColor: [243, 244, 246] },
+          columnStyles: {
+            0: { halign: 'center', cellWidth: 12 },
+            2: { halign: 'center' },
+            3: { halign: 'center' },
+          },
+          didDrawPage: (data) => {
+            drawHeaderFooter({ pageNumber: data.pageNumber });
+            if (data.pageNumber === 1) {
+              doc.setFont('helvetica', 'normal');
+              doc.setFontSize(9);
+              doc.setTextColor(80, 80, 80);
+              doc.text(
+                `Periode: ${formatDisplayDate(startDate)} s.d. ${formatDisplayDate(endDate)}   |   ${rows.length} cabang`,
+                10, 23
+              );
+              doc.setTextColor(0, 0, 0);
+            }
+          },
+        });
+
+        const pdfBlob = doc.output('blob');
+        downloadBlob(pdfBlob, `laporan-general_${formatDate(startDate!)}_sd_${formatDate(endDate!)}.pdf`);
+      } catch (e) {
+        console.error('General PDF error:', e);
+        alert('Gagal membuat file PDF. Periksa console untuk detail.');
+      } finally {
+        setIsDownloadingGeneralPDF(false);
+      }
+    };
+
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext('2d');
+      ctx?.drawImage(img, 0, 0);
+      renderPDF(canvas.toDataURL('image/png'));
+    };
+    img.onerror = () => renderPDF(null);
+  };
+
   // ─── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="w-full flex flex-col gap-6">
@@ -572,6 +755,41 @@ export default function ExportPage() {
           >
             {isDownloadingExcel ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileSpreadsheet className="w-4 h-4" />}
             {isDownloadingExcel ? 'Membuat Excel...' : 'Ekspor Excel'}
+          </button>
+        </div>
+      </div>
+
+      {/* Tertiary Card — Laporan General */}
+      <div
+        className={`bg-white rounded-[16px] shadow-[0_2px_10px_-4px_rgba(0,0,0,0.1)] p-8 transition-all duration-300 ${isReady ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}
+      >
+        {/* Card header */}
+        <div className="flex items-center gap-3 mb-2">
+          <div className="w-8 h-8 bg-[#FEF3C7] rounded-md flex items-center justify-center">
+            <FileSpreadsheet className="w-4 h-4 text-[#D97706]" />
+          </div>
+          <h3 className="text-[20px] font-bold text-[#1E3A8A]">Laporan General</h3>
+        </div>
+        <p className="text-[#6B7280] text-[14px] mb-4">
+          Rekapan ringkas per barbershop — jumlah kehadiran tepat waktu (IN &amp; OUT)
+        </p>
+
+        <div className="flex items-center gap-4 flex-wrap mt-2">
+          <button
+            onClick={handleExportGeneralPDF}
+            disabled={isDownloadingGeneralPDF}
+            className="flex items-center gap-2 bg-[#4B5563] hover:bg-[#374151] text-white px-8 py-3 rounded-[6px] text-[14px] font-semibold transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {isDownloadingGeneralPDF ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+            {isDownloadingGeneralPDF ? 'Membuat PDF...' : 'Unduh PDF General'}
+          </button>
+          <button
+            onClick={handleExportGeneralExcel}
+            disabled={isDownloadingGeneralExcel}
+            className="flex items-center gap-2 bg-[#D97706] hover:bg-[#B45309] text-white px-8 py-3 rounded-[6px] text-[14px] font-semibold transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {isDownloadingGeneralExcel ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileSpreadsheet className="w-4 h-4" />}
+            {isDownloadingGeneralExcel ? 'Membuat Excel...' : 'Ekspor Excel General'}
           </button>
         </div>
       </div>
