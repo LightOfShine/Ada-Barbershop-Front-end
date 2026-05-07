@@ -32,6 +32,7 @@ function TopHeader({ onMenuToggle }: { onMenuToggle: () => void }) {
 
   // Menentukan judul halaman berdasarkan path
   const getPageTitle = () => {
+    if (/^\/dashboard\/outlet\/.+/.test(pathname)) return 'Detail Outlet';
     const item = MENU_ITEMS.find((m) => m.path === pathname);
     return item ? item.name : 'Dashboard';
   };
