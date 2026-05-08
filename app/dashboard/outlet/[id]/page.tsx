@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQRCode } from 'next-qrcode';
+import jsPDF from 'jspdf';
 import {
   ArrowLeft, MoreVertical, MapPin, QrCode,
   Printer, RefreshCw, Loader2, AlertCircle,
@@ -177,8 +178,8 @@ function BarcodeSection({ barbershopId, shopName }: { barbershopId: string; shop
   const [loading, setLoading]     = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [printing, setPrinting]   = useState(false);
   const printRef  = useRef<HTMLDivElement>(null);
-  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   // Fetch QR token dari API
   const fetchQr = useCallback(async () => {
@@ -221,31 +222,63 @@ function BarcodeSection({ barbershopId, shopName }: { barbershopId: string; shop
     setRefreshing(false);
   };
 
-  const handlePrint = () => {
-    if (!printRef.current || !iframeRef.current) return;
-    const iframe = iframeRef.current;
-    const doc = iframe.contentDocument || iframe.contentWindow?.document;
-    if (!doc) return;
-    doc.open();
-    doc.write(`<html><head><title>QR Absensi \u2013 ${shopName}</title>
-      <style>body{display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0}
-      .w{text-align:center;padding:40px}h2{font-family:sans-serif;color:#1E3A8A;margin-bottom:16px}
-      p{font-family:monospace;font-size:11px;color:#6B7280;margin-top:12px;word-break:break-all}
-      </style></head><body><div class="w">
-      <h2>QR Absensi \u2013 ${shopName}</h2>
-      ${printRef.current.innerHTML}
-      <p>${qrToken}</p></div></body></html>`);
-    doc.close();
-    iframe.contentWindow?.focus();
-    iframe.contentWindow?.print();
+  const handlePrint = async () => {
+    if (!printRef.current || !qrToken) return;
+    setPrinting(true);
+    try {
+      // Ambil elemen <canvas> yang di-render oleh library QR langsung dari DOM.
+      // Cara ini lebih andal dibanding html2canvas karena tidak ada masalah
+      // tainted canvas — kita cukup panggil .toDataURL() pada canvas aslinya.
+      const qrCanvas = printRef.current.querySelector('canvas');
+      if (!qrCanvas) throw new Error('Canvas QR tidak ditemukan. Pastikan QR sudah ditampilkan.');
+
+      const imgData = qrCanvas.toDataURL('image/png');
+
+      // Ukuran PDF A5 portrait (mm)
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a5' });
+      const pageW = pdf.internal.pageSize.getWidth();
+
+      // Judul
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(14);
+      pdf.setTextColor(30, 58, 138); // #1E3A8A
+      pdf.text(`QR Absensi – ${shopName}`, pageW / 2, 18, { align: 'center' });
+
+      // Gambar QR di tengah halaman
+      const qrSize = 80; // mm
+      const qrX = (pageW - qrSize) / 2;
+      const qrY = 26;
+      pdf.addImage(imgData, 'PNG', qrX, qrY, qrSize, qrSize);
+
+      // Token kecil di bawah QR
+      pdf.setFont('courier', 'normal');
+      pdf.setFontSize(7);
+      pdf.setTextColor(107, 114, 128); // #6B7280
+      pdf.text(qrToken, pageW / 2, qrY + qrSize + 8, {
+        align: 'center',
+        maxWidth: pageW - 20,
+      });
+
+      // Buka PDF di tab baru agar user bisa print / download
+      const pdfBlob = pdf.output('blob');
+      const blobUrl = URL.createObjectURL(pdfBlob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 10_000);
+    } catch (err) {
+      alert('Gagal membuat PDF: ' + err);
+    } finally {
+      setPrinting(false);
+    }
   };
 
   useEffect(() => { fetchQr(); }, [fetchQr]);
 
   return (
     <div className="bg-white rounded-[12px] border border-[#F0F0F0] p-6">
-      {/* Hidden iframe for printing – no new window */}
-      <iframe ref={iframeRef} style={{ display: 'none' }} title="print-frame" />
       <h2 className="text-[15px] font-semibold text-[#374151] mb-5">Generate Barcode</h2>
 
       <div className="flex justify-center">
@@ -279,10 +312,12 @@ function BarcodeSection({ barbershopId, shopName }: { barbershopId: string; shop
                   <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
                   Refresh
                 </button>
-                <button onClick={handlePrint}
-                  className="flex items-center gap-1.5 px-4 py-1.5 rounded-[6px] bg-[#3B60E4] hover:bg-[#1E40AF] text-white text-[12px] font-semibold transition-colors">
-                  <Printer className="w-3.5 h-3.5" />
-                  Print
+                <button onClick={handlePrint} disabled={printing}
+                  className="flex items-center gap-1.5 px-4 py-1.5 rounded-[6px] bg-[#3B60E4] hover:bg-[#1E40AF] text-white text-[12px] font-semibold transition-colors disabled:opacity-60">
+                  {printing
+                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    : <Printer className="w-3.5 h-3.5" />}
+                  {printing ? 'Memproses...' : 'Print PDF'}
                 </button>
               </div>
             </>
