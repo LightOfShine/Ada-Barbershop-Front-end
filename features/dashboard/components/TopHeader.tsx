@@ -12,6 +12,14 @@ export function TopHeader({ onMenuToggle }: { onMenuToggle: () => void }) {
   // Menentukan judul halaman berdasarkan path
   const getPageTitle = () => {
     if (/^\/dashboard\/outlet\/.+/.test(pathname)) return 'Detail Outlet';
+    if (/^\/dashboard\/users\/tambah$/.test(pathname)) return 'Tambah User';
+    if (/^\/dashboard\/users\/.+\/edit$/.test(pathname)) return 'Edit User';
+    if (/^\/dashboard\/users\/.+$/.test(pathname)) return 'Detail User';
+    if (/^\/dashboard\/regions\/tambah$/.test(pathname)) return 'Tambah Region';
+    if (/^\/dashboard\/regions\/.+\/edit$/.test(pathname)) return 'Edit Region';
+    if (/^\/dashboard\/barbershops\/tambah$/.test(pathname)) return 'Tambah Barbershop';
+    if (/^\/dashboard\/barbershops\/.+\/edit$/.test(pathname)) return 'Edit Barbershop';
+    
     const item = MENU_ITEMS.find((m) => m.path === pathname);
     return item ? item.name : 'Dashboard';
   };

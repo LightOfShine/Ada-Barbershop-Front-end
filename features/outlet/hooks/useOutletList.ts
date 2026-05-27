@@ -10,7 +10,6 @@ export function useOutletList() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setIsLoading(true);
     fetchOutlets()
       .then((data) => setOutlets(data))
       .catch((e: unknown) =>
