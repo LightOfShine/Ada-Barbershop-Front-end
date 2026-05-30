@@ -2,11 +2,13 @@
 
 import { useState } from 'react';
 import { useSearch } from '@/shared/context/SearchContext';
-import { Edit, Trash2, Plus, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
+import { Edit, Trash2, Plus, ChevronLeft, ChevronRight, Eye, SlidersHorizontal } from 'lucide-react';
 import Link from 'next/link';
 import type { User } from '../types/user.types';
-import { INITIAL_USER_DATA } from '../constants/mock-data';
+import { INITIAL_USER_DATA, BARBERSHOP_OPTIONS, REGION_OPTIONS } from '../constants/mock-data';
 import { DeleteUserModal } from '../components/DeleteUserModal';
+import { UserFilterModal } from '../components/UserFilterModal';
+import type { UserFilters } from '../components/UserFilterModal';
 
 const ITEMS_PER_PAGE = 5;
 
@@ -16,19 +18,55 @@ const ROLE_BADGE: Record<string, string> = {
   EMPLOYEE: 'bg-emerald-100 text-emerald-700',
 };
 
+const EMPTY_FILTERS: UserFilters = { roles: [], regions: [], barbershops: [] };
+
 export default function UserListPage() {
   const { searchQuery } = useSearch();
   const [data, setData] = useState<User[]>(INITIAL_USER_DATA);
   const [currentPage, setCurrentPage] = useState(1);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [activeFilters, setActiveFilters] = useState<UserFilters>(EMPTY_FILTERS);
 
-  // Filter
-  const filteredData = data.filter((item) =>
-    item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.role.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const activeFilterCount = activeFilters.roles.length + activeFilters.regions.length + activeFilters.barbershops.length;
+
+  // Filter: search + active filters
+  const filteredData = data.filter((item) => {
+    // Search
+    const matchesSearch =
+      item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.role.toLowerCase().includes(searchQuery.toLowerCase());
+    if (!matchesSearch) return false;
+
+    // Role filter
+    if (activeFilters.roles.length > 0 && !activeFilters.roles.includes(item.role)) {
+      return false;
+    }
+
+    // Region filter — match by regionName to region label
+    if (activeFilters.regions.length > 0) {
+      const selectedRegionLabels: string[] = REGION_OPTIONS
+        .filter((r) => activeFilters.regions.includes(r.value))
+        .map((r) => r.label);
+      if (!item.regionName || !selectedRegionLabels.includes(item.regionName)) {
+        return false;
+      }
+    }
+
+    // Barbershop filter — match by barbershopName to barbershop label
+    if (activeFilters.barbershops.length > 0) {
+      const selectedBsLabels: string[] = BARBERSHOP_OPTIONS
+        .filter((b) => activeFilters.barbershops.includes(b.value))
+        .map((b) => b.label);
+      if (!item.barbershopName || !selectedBsLabels.includes(item.barbershopName)) {
+        return false;
+      }
+    }
+
+    return true;
+  });
 
   // Pagination
   const totalPages = Math.max(1, Math.ceil(filteredData.length / ITEMS_PER_PAGE));
@@ -49,15 +87,77 @@ export default function UserListPage() {
     setIsDeleteOpen(true);
   };
 
+  const handleApplyFilters = (filters: UserFilters) => {
+    setActiveFilters(filters);
+    setCurrentPage(1);
+  };
+
+  const handleClearFilters = () => {
+    setActiveFilters(EMPTY_FILTERS);
+    setCurrentPage(1);
+  };
+
   return (
     <div className="w-full flex flex-col gap-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <h2 className="text-[20px] font-semibold text-[#1E293B]">Kelola User</h2>
-        <Link href="/dashboard/users/tambah" className="flex items-center gap-2 bg-[#1E65E2] hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg text-[13px] font-medium transition-colors">
-          <Plus className="w-4 h-4" /> Tambah User
-        </Link>
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={() => setIsFilterOpen(true)}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-[13px] font-medium transition-colors border ${
+              activeFilterCount > 0
+                ? 'border-[#1E65E2] bg-[#EBF3FF] text-[#1E65E2]'
+                : 'border-[#E5E7EB] hover:border-[#D1D5DB] text-[#374151] hover:bg-[#F9FAFB]'
+            }`}
+          >
+            <SlidersHorizontal className="w-4 h-4" />
+            Filter
+            {activeFilterCount > 0 && (
+              <span className="bg-[#1E65E2] text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
+          <Link href="/dashboard/users/tambah" className="flex items-center gap-2 bg-[#1E65E2] hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg text-[13px] font-medium transition-colors">
+            <Plus className="w-4 h-4" /> Tambah User
+          </Link>
+        </div>
       </div>
+
+      {/* Active Filter Tags */}
+      {activeFilterCount > 0 && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-[12px] text-[#6B7280] font-medium">Filter aktif:</span>
+          {activeFilters.roles.map((r) => (
+            <span key={`role-${r}`} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-purple-50 text-purple-700 text-[11px] font-semibold">
+              {r}
+            </span>
+          ))}
+          {activeFilters.regions.map((r) => {
+            const label = REGION_OPTIONS.find((opt) => opt.value === r)?.label ?? r;
+            return (
+              <span key={`region-${r}`} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 text-[11px] font-semibold">
+                {label}
+              </span>
+            );
+          })}
+          {activeFilters.barbershops.map((b) => {
+            const label = BARBERSHOP_OPTIONS.find((opt) => opt.value === b)?.label ?? b;
+            return (
+              <span key={`bs-${b}`} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-semibold">
+                {label}
+              </span>
+            );
+          })}
+          <button
+            onClick={handleClearFilters}
+            className="text-[11px] font-medium text-[#EF4444] hover:text-red-700 transition-colors ml-1"
+          >
+            Hapus semua
+          </button>
+        </div>
+      )}
 
       {/* Table */}
       <div className="bg-white rounded-[20px] border border-[#E5E7EB] overflow-hidden flex flex-col">
@@ -124,6 +224,14 @@ export default function UserListPage() {
         </div>
       </div>
 
+      {/* Filter Modal */}
+      <UserFilterModal
+        isOpen={isFilterOpen}
+        onClose={() => setIsFilterOpen(false)}
+        onApply={handleApplyFilters}
+        currentFilters={activeFilters}
+      />
+
       {/* Delete Modal */}
       {isDeleteOpen && selectedUser && (
         <DeleteUserModal
@@ -135,3 +243,4 @@ export default function UserListPage() {
     </div>
   );
 }
+

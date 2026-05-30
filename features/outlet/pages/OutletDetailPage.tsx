@@ -1,7 +1,8 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, MapPin, Loader2, AlertCircle } from 'lucide-react';
+import Link from 'next/link';
+import { ArrowLeft, MapPin, Loader2, AlertCircle, Scissors } from 'lucide-react';
 import { useOutletDetail } from '../hooks/useOutletDetail';
 import { ShiftTimeline } from '../components/ShiftTimeline';
 import { EmployeeCard } from '../components/EmployeeCard';
@@ -56,14 +57,23 @@ export default function OutletDetailPage() {
       {/* Detail + Employee Cards */}
       <div className="bg-white rounded-[12px] border border-[#F0F0F0] p-6">
         <h2 className="text-[15px] font-semibold text-[#374151] mb-4">Detail Outlet</h2>
-        <div className="mb-5">
-          <h1 className="text-[22px] font-bold text-[#1E3A8A]">{shop.name}</h1>
-          {(shop.address || shop.region?.name) && (
-            <div className="flex items-start gap-1.5 mt-1">
-              <MapPin className="w-3.5 h-3.5 text-[#9CA3AF] flex-shrink-0 mt-0.5" />
-              <p className="text-[13px] text-[#6B7280]">{shop.address ?? shop.region?.name}</p>
-            </div>
-          )}
+        <div className="mb-5 flex items-start justify-between">
+          <div>
+            <h1 className="text-[22px] font-bold text-[#1E3A8A]">{shop.name}</h1>
+            {(shop.address || shop.region?.name) && (
+              <div className="flex items-start gap-1.5 mt-1">
+                <MapPin className="w-3.5 h-3.5 text-[#9CA3AF] flex-shrink-0 mt-0.5" />
+                <p className="text-[13px] text-[#6B7280]">{shop.address ?? shop.region?.name}</p>
+              </div>
+            )}
+          </div>
+          <Link
+            href="/dashboard/barbershops"
+            className="flex items-center gap-2 border border-[#E5E7EB] hover:border-[#D1D5DB] text-[#374151] hover:bg-[#F9FAFB] px-4 py-2.5 rounded-lg text-[13px] font-medium transition-colors"
+          >
+            <Scissors className="w-4 h-4 text-[#6B7280]" />
+            Kelola Barbershop
+          </Link>
         </div>
         {employees.length > 0 ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">

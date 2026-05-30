@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Plus, MapPin, Search, Loader2, AlertCircle } from 'lucide-react';
 import { useOutletList } from '../hooks/useOutletList';
 import { OutletCard } from '../components/OutletCard';
