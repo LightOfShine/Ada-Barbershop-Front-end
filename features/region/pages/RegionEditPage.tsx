@@ -3,14 +3,15 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Save, X } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { INITIAL_REGION_DATA } from '../constants/mock-data';
 
-export default function RegionEditPage({ params }: { params: { id: string } }) {
+export default function RegionEditPage() {
+  const { id } = useParams<{ id: string }>();
   const router = useRouter();
   
   // Find mock region based on ID
-  const region = INITIAL_REGION_DATA.find(r => r.id === params.id) || INITIAL_REGION_DATA[0];
+  const region = INITIAL_REGION_DATA.find(r => r.id === id) || INITIAL_REGION_DATA[0];
 
   const [formData, setFormData] = useState({
     name: region.name,

@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, MapPin, Loader2, AlertCircle, Scissors } from 'lucide-react';
+import { ArrowLeft, MapPin, Loader2, AlertCircle, Edit } from 'lucide-react';
 import { useOutletDetail } from '../hooks/useOutletDetail';
 import { ShiftTimeline } from '../components/ShiftTimeline';
 import { EmployeeCard } from '../components/EmployeeCard';
@@ -68,11 +68,11 @@ export default function OutletDetailPage() {
             )}
           </div>
           <Link
-            href="/dashboard/barbershops"
-            className="flex items-center gap-2 border border-[#E5E7EB] hover:border-[#D1D5DB] text-[#374151] hover:bg-[#F9FAFB] px-4 py-2.5 rounded-lg text-[13px] font-medium transition-colors"
+            href={`/dashboard/barbershops/${shop.id}/edit`}
+            className="flex items-center gap-2 bg-[#1E65E2] hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg text-[13px] font-medium transition-colors shadow-sm"
           >
-            <Scissors className="w-4 h-4 text-[#6B7280]" />
-            Kelola Barbershop
+            <Edit className="w-4 h-4" />
+            Edit Outlet
           </Link>
         </div>
         {employees.length > 0 ? (

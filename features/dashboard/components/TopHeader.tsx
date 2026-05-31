@@ -17,8 +17,7 @@ export function TopHeader({ onMenuToggle }: { onMenuToggle: () => void }) {
     if (/^\/dashboard\/users\/.+$/.test(pathname)) return 'Detail User';
     if (/^\/dashboard\/regions\/tambah$/.test(pathname)) return 'Tambah Region';
     if (/^\/dashboard\/regions\/.+\/edit$/.test(pathname)) return 'Edit Region';
-    if (/^\/dashboard\/barbershops\/tambah$/.test(pathname)) return 'Tambah Barbershop';
-    if (/^\/dashboard\/barbershops\/.+\/edit$/.test(pathname)) return 'Edit Barbershop';
+    if (/^\/dashboard\/barbershops\/.+\/edit$/.test(pathname)) return 'Edit Outlet';
     
     const item = MENU_ITEMS.find((m) => m.path === pathname);
     return item ? item.name : 'Dashboard';

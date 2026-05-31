@@ -4,9 +4,10 @@ import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Calendar, Camera, Save, X } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 
-export default function KapsterEditPage({ params }: { params: { id: string } }) {
+export default function KapsterEditPage() {
+  const { id } = useParams<{ id: string }>();
   const router = useRouter();
 
   const [formData, setFormData] = useState({
@@ -28,7 +29,7 @@ export default function KapsterEditPage({ params }: { params: { id: string } }) 
 
   const handleSave = () => {
     alert('Data kapster berhasil diperbarui!');
-    router.push(`/dashboard/kapster/${params.id}`);
+    router.push(`/dashboard/kapster/${id}`);
   };
 
   const handlePhotoUploadClick = () => {
@@ -40,7 +41,7 @@ export default function KapsterEditPage({ params }: { params: { id: string } }) 
       <div className="text-[15px]">
         <Link href="/dashboard/kapster" className="text-[#9CA3AF] hover:text-[#6B7280] transition-colors">Data Kapster</Link>
         <span className="text-[#9CA3AF] px-1">/</span>
-        <Link href={`/dashboard/kapster/${params.id}`} className="text-[#9CA3AF] hover:text-[#6B7280] transition-colors">Detail Kapster</Link>
+        <Link href={`/dashboard/kapster/${id}`} className="text-[#9CA3AF] hover:text-[#6B7280] transition-colors">Detail Kapster</Link>
         <span className="text-[#1F2937] font-medium"> / Edit Profil</span>
       </div>
 
@@ -97,7 +98,7 @@ export default function KapsterEditPage({ params }: { params: { id: string } }) 
         </div>
 
         <div className="mt-12 flex items-center justify-end gap-4 max-w-4xl pt-6 border-t border-[#F3F4F6]">
-          <Link href={`/dashboard/kapster/${params.id}`} className="flex items-center gap-2 px-6 py-2.5 text-[14px] font-medium text-[#4B5563] bg-white border border-[#E5E7EB] hover:bg-[#F9FAFB] rounded-lg transition-colors">
+          <Link href={`/dashboard/kapster/${id}`} className="flex items-center gap-2 px-6 py-2.5 text-[14px] font-medium text-[#4B5563] bg-white border border-[#E5E7EB] hover:bg-[#F9FAFB] rounded-lg transition-colors">
             <X className="w-4 h-4" /> Batal
           </Link>
           <button onClick={handleSave} className="flex items-center gap-2 px-6 py-2.5 text-[14px] font-medium text-white bg-[#1E65E2] hover:bg-blue-700 rounded-lg transition-colors">

@@ -2,16 +2,17 @@
 
 import Link from 'next/link';
 import { Edit, Trash2, ArrowLeft, Shield, Mail, Clock, Calendar } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { INITIAL_USER_DATA } from '../constants/mock-data';
 import { useState } from 'react';
 import { DeleteUserModal } from '../components/DeleteUserModal';
 
-export default function UserDetailPage({ params }: { params: { id: string } }) {
+export default function UserDetailPage() {
+  const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   
-  const user = INITIAL_USER_DATA.find(u => u.id === params.id) || INITIAL_USER_DATA[0];
+  const user = INITIAL_USER_DATA.find(u => u.id === id) || INITIAL_USER_DATA[0];
 
   const handleDelete = () => {
     setIsDeleteOpen(false);

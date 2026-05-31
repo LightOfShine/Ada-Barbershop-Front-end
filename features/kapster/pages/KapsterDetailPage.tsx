@@ -1,8 +1,12 @@
+'use client';
+
 import Image from 'next/image';
 import Link from 'next/link';
 import { Calendar, Edit } from 'lucide-react';
+import { useParams } from 'next/navigation';
 
-export default function KapsterDetailPage({ params }: { params: { id: string } }) {
+export default function KapsterDetailPage() {
+  const { id } = useParams<{ id: string }>();
   const kapsterData = {
     nama: 'Ahmad Roni',
     idKapster: '1400101',
@@ -21,7 +25,7 @@ export default function KapsterDetailPage({ params }: { params: { id: string } }
           <Link href="/dashboard/kapster" className="text-[#9CA3AF] hover:text-[#6B7280] transition-colors">Data Kapster</Link>
           <span className="text-[#1F2937] font-medium"> / Detail Kapster</span>
         </div>
-        <Link href={`/dashboard/kapster/${params.id}/edit`} className="flex items-center gap-2 px-4 py-2 bg-[#1E65E2] hover:bg-blue-700 text-white rounded-lg text-[13px] font-medium transition-colors">
+        <Link href={`/dashboard/kapster/${id}/edit`} className="flex items-center gap-2 px-4 py-2 bg-[#1E65E2] hover:bg-blue-700 text-white rounded-lg text-[13px] font-medium transition-colors">
           <Edit className="w-4 h-4" /> Edit Profil
         </Link>
       </div>

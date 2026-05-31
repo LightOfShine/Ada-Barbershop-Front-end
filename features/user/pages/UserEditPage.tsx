@@ -3,14 +3,15 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Save, X } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { ROLE_OPTIONS, REGION_OPTIONS, BARBERSHOP_OPTIONS, INITIAL_USER_DATA } from '../constants/mock-data';
 
-export default function UserEditPage({ params }: { params: { id: string } }) {
+export default function UserEditPage() {
+  const { id } = useParams<{ id: string }>();
   const router = useRouter();
   
   // Find mock user based on ID
-  const user = INITIAL_USER_DATA.find(u => u.id === params.id) || INITIAL_USER_DATA[0];
+  const user = INITIAL_USER_DATA.find(u => u.id === id) || INITIAL_USER_DATA[0];
 
   const [formData, setFormData] = useState({
     name: user.name,
