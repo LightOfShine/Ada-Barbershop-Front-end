@@ -2,20 +2,21 @@
 
 import { useState } from 'react';
 import { useSearch } from '@/shared/context/SearchContext';
-import { Edit, Trash2, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Edit, Trash2, Plus, ChevronLeft, ChevronRight, Loader2, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 import type { Region } from '../types/region.types';
-import { INITIAL_REGION_DATA } from '../constants/mock-data';
 import { DeleteRegionModal } from '../components/DeleteRegionModal';
+import { useRegionList } from '../hooks/useRegionList';
 
 const ITEMS_PER_PAGE = 5;
 
 export default function RegionListPage() {
   const { searchQuery } = useSearch();
-  const [data, setData] = useState<Region[]>(INITIAL_REGION_DATA);
+  const { data, isLoading, error, removeRegion } = useRegionList();
   const [currentPage, setCurrentPage] = useState(1);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [selectedRegion, setSelectedRegion] = useState<Region | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Filter
   const filteredData = data.filter((item) =>
@@ -29,11 +30,18 @@ export default function RegionListPage() {
   const goToPage = (page: number) => { if (page >= 1 && page <= totalPages) setCurrentPage(page); };
 
   // Handlers
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!selectedRegion) return;
-    setData(data.filter((item) => item.id !== selectedRegion.id));
-    setIsDeleteOpen(false);
-    setSelectedRegion(null);
+    setIsDeleting(true);
+    try {
+      await removeRegion(selectedRegion.id);
+      setIsDeleteOpen(false);
+      setSelectedRegion(null);
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : 'Gagal menghapus region.');
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const openDelete = (region: Region) => {
@@ -44,6 +52,26 @@ export default function RegionListPage() {
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
+        <Loader2 className="w-9 h-9 text-[#1E65E2] animate-spin" />
+        <p className="text-[13px] text-[#6B7280]">Memuat data region...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+        <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center">
+          <AlertCircle className="w-7 h-7 text-red-400" />
+        </div>
+        <p className="text-[14px] font-semibold text-[#374151]">{error}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full flex flex-col gap-6">
@@ -72,11 +100,11 @@ export default function RegionListPage() {
                 <tr key={item.id ?? index} className="border-b border-[#F3F4F6] last:border-none hover:bg-[#F8FAFC] transition-colors">
                   <td className="py-4 px-6 text-[13px] text-[#374151] whitespace-nowrap font-medium">{item.name}</td>
                   <td className="py-4 px-6 whitespace-nowrap">
-                    <span className={`inline-flex px-2.5 py-1 rounded-full text-[11px] font-semibold ${item.barbershopCount > 0 ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>
-                      {item.barbershopCount} cabang
+                    <span className={`inline-flex px-2.5 py-1 rounded-full text-[11px] font-semibold ${(item.barbershopCount ?? 0) > 0 ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>
+                      {item.barbershopCount ?? 0} cabang
                     </span>
                   </td>
-                  <td className="py-4 px-6 text-[13px] text-[#6B7280] whitespace-nowrap">{formatDate(item.createdAt)}</td>
+                  <td className="py-4 px-6 text-[13px] text-[#6B7280] whitespace-nowrap">{item.createdAt ? formatDate(item.createdAt) : '—'}</td>
                   <td className="py-4 px-6 text-[13px] text-[#374151] whitespace-nowrap">
                     <div className="flex items-center justify-center gap-3">
                       <Link href={`/dashboard/regions/${item.id}/edit`} className="text-[#3B82F6] hover:text-blue-700 transition-colors p-1" title="Edit"><Edit className="w-4 h-4" /></Link>

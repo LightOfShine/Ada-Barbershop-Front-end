@@ -1,99 +1,124 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { Plus, MapPin, Search, Loader2, AlertCircle } from 'lucide-react';
-import { useOutletList } from '../hooks/useOutletList';
+import { useSearch } from '@/shared/context/SearchContext';
+import { Loader2, Plus, AlertCircle, Edit, Trash2 } from 'lucide-react';
 import { OutletCard } from '../components/OutletCard';
 import { TambahOutletModal } from '../components/TambahOutletModal';
+import { useOutletList } from '../hooks/useOutletList';
 
 export default function OutletListPage() {
-  const router = useRouter();
-  const { outlets, isLoading, error, addOutlet } = useOutletList();
-  const [searchQuery, setSearchQuery] = useState('');
+  const { searchQuery } = useSearch();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const { data, isLoading, error, addOutlet, removeOutlet } = useOutletList();
 
-  const filtered = outlets.filter(
-    (o) =>
-      (o.name ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (o.address ?? '').toLowerCase().includes(searchQuery.toLowerCase())
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
+
+  const filteredData = data.filter((item) =>
+    item.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleAddOutlet = (nama: string, alamat: string) => {
-    addOutlet(nama, alamat);
-    setIsModalOpen(false);
+  const handleSave = async (nama: string, alamat: string, regionId: string) => {
+    try {
+      await addOutlet(nama, alamat, regionId);
+      setIsModalOpen(false);
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : 'Gagal menambahkan outlet');
+    }
   };
+
+  const handleDelete = async (id: string, name: string) => {
+    if (confirm(`Apakah Anda yakin ingin menghapus outlet ${name}?`)) {
+      setIsDeleting(id);
+      try {
+        await removeOutlet(id);
+      } catch (e: unknown) {
+        alert(e instanceof Error ? e.message : 'Gagal menghapus outlet');
+      } finally {
+        setIsDeleting(null);
+      }
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
+        <Loader2 className="w-9 h-9 text-[#1E65E2] animate-spin" />
+        <p className="text-[13px] text-[#6B7280]">Memuat data outlet...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+        <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center">
+          <AlertCircle className="w-7 h-7 text-red-400" />
+        </div>
+        <p className="text-[14px] font-semibold text-[#374151]">{error}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full flex flex-col gap-6">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div className="flex items-center gap-4 flex-1 min-w-0">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9CA3AF] pointer-events-none" />
-            <input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Cari outlet..."
-              className="h-[40px] pl-9 pr-4 w-[220px] bg-white border border-[#E5E7EB] rounded-full text-[13px] text-[#374151] placeholder:text-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#E2E8F0]"
-            />
-          </div>
-          <span className="text-[13px] text-[#9CA3AF] whitespace-nowrap">
-            {isLoading ? 'Memuat...' : `${filtered.length} outlet ditemukan`}
-          </span>
-        </div>
+      {/* Header section */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-[20px] font-semibold text-[#1E293B]">Kelola Barbershop</h2>
         <button
           onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-2 bg-[#1E65E2] hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg text-[13px] font-medium transition-colors"
+          className="flex items-center gap-2 bg-[#1E65E2] hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg text-[13px] font-medium transition-colors shadow-sm"
         >
-          <Plus className="w-4 h-4" /> Tambah Outlet
+          <Plus className="w-4 h-4" />
+          Tambah Outlet
         </button>
       </div>
 
-      {/* Loading */}
-      {isLoading && (
-        <div className="flex items-center justify-center py-20 gap-3">
-          <Loader2 className="w-6 h-6 text-[#1E3A8A] animate-spin" />
-          <p className="text-[14px] text-[#6B7280]">Memuat daftar outlet...</p>
-        </div>
-      )}
-
-      {/* Error */}
-      {!isLoading && error && (
-        <div className="flex items-center gap-3 bg-red-50 border border-red-200 rounded-[10px] px-5 py-4 text-red-700 text-[13px]">
-          <AlertCircle className="w-4 h-4 flex-shrink-0" /> {error}
-        </div>
-      )}
-
-      {/* Grid / Empty State */}
-      {!isLoading && !error && (
-        filtered.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-            {filtered.map((outlet) => (
-              <OutletCard
-                key={outlet.id}
-                outlet={outlet}
-                onClick={() => router.push(`/dashboard/outlet/${outlet.id}`)}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center py-20 text-center">
-            <div className="w-16 h-16 rounded-full bg-[#EBF3FF] flex items-center justify-center mb-4">
-              <MapPin className="w-8 h-8 text-[#93C5FD]" />
+      {/* Grid of outlet cards with delete button support */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {filteredData.map((item) => (
+          <div key={item.id} className="relative group">
+            <OutletCard
+              outlet={item}
+              onClick={() => {
+                window.location.href = `/dashboard/outlet/${item.id}`;
+              }}
+            />
+            {/* Hover overlay with edit & delete actions */}
+            <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              {isDeleting === item.id ? (
+                <Loader2 className="w-5 h-5 text-red-500 animate-spin" />
+              ) : (
+                <button
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDelete(item.id, item.name); }}
+                  className="bg-white p-1.5 rounded-md shadow text-red-500 hover:bg-red-50 transition-colors"
+                  title="Hapus Outlet"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
             </div>
-            <p className="text-[15px] font-semibold text-[#374151]">Outlet tidak ditemukan</p>
-            <p className="text-[13px] text-[#9CA3AF] mt-1">Coba kata kunci lain atau tambah outlet baru</p>
           </div>
-        )
+        ))}
+      </div>
+
+      {filteredData.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-20 px-4 text-center bg-white rounded-[20px] border border-[#E5E7EB]">
+          <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+            <AlertCircle className="w-8 h-8 text-gray-400" />
+          </div>
+          <h3 className="text-[16px] font-medium text-gray-900 mb-1">Tidak ada outlet ditemukan</h3>
+          <p className="text-[13px] text-gray-500 max-w-[250px]">
+            {searchQuery ? 'Coba gunakan kata kunci pencarian yang berbeda.' : 'Belum ada outlet yang ditambahkan. Silakan tambah outlet baru.'}
+          </p>
+        </div>
       )}
 
       {/* Modal */}
       {isModalOpen && (
         <TambahOutletModal
           onClose={() => setIsModalOpen(false)}
-          onSave={handleAddOutlet}
+          onSave={handleSave}
         />
       )}
     </div>

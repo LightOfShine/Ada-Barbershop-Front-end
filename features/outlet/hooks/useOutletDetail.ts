@@ -15,12 +15,12 @@ export function useOutletDetail(id: string) {
       try {
         setIsLoading(true);
         const list = await fetchOutlets();
-        const found = list.find((b) => b.id === id);
+        const found = list.find((b) => String(b.id) === String(id));
         if (!found) throw new Error('Outlet tidak ditemukan.');
         setShop(found);
 
         const allUsers = await fetchEmployees();
-        const inShop = allUsers.filter((u) => u.barbershopId === id);
+        const inShop = allUsers.filter((u) => String(u.barbershopId) === String(id));
         setEmployees(
           inShop.length > 0 ? inShop : allUsers.filter((u) => u.role === 'EMPLOYEE')
         );

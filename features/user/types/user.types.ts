@@ -5,11 +5,17 @@ export interface User {
   name: string;
   email: string;
   role: UserRole;
-  regionName?: string;
-  barbershopName?: string;
+  regionId?: string;
+  barbershopId?: string;
   shiftStart?: string; // '08:00'
   shiftEnd?: string;   // '17:00'
   createdAt: string;   // ISO date
+  // Nested relations from API
+  region?: { id: string; name: string };
+  barbershop?: { id: string; name: string };
+  // Computed convenience fields
+  regionName?: string;
+  barbershopName?: string;
 }
 
 export interface UserFormData {

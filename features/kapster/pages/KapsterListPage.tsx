@@ -1,21 +1,44 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSearch } from '@/shared/context/SearchContext';
-import { Edit, Trash2, Plus, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
+import { Edit, Trash2, Plus, ChevronLeft, ChevronRight, Eye, Loader2, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 import type { Kapster } from '../types/kapster.types';
-import { INITIAL_KAPSTER_DATA } from '../constants/mock-data';
 import { DeleteKapsterModal } from '../components/DeleteKapsterModal';
+import { fetchUsersByRole } from '@/features/user/services/user.service';
+import type { User } from '@/features/user/types/user.types';
 
 const ITEMS_PER_PAGE = 5;
 
+/** Map an EMPLOYEE User to the Kapster shape used by the UI */
+function userToKapster(u: User): Kapster {
+  return {
+    id: u.id,
+    nama: u.name,
+    idKapster: u.id.slice(0, 8),
+    noHp: '—',
+    outlet: u.barbershopName ?? u.barbershop?.name ?? '—',
+    shift: u.shiftStart && u.shiftEnd ? `${u.shiftStart}–${u.shiftEnd}` : '—',
+    email: u.email,
+  };
+}
+
 export default function KapsterListPage() {
   const { searchQuery } = useSearch();
-  const [data, setData] = useState<Kapster[]>(INITIAL_KAPSTER_DATA);
+  const [data, setData] = useState<Kapster[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [selectedKapster, setSelectedKapster] = useState<Kapster | null>(null);
+
+  useEffect(() => {
+    fetchUsersByRole('EMPLOYEE')
+      .then((employees) => setData(employees.map(userToKapster)))
+      .catch((e: unknown) => setError(e instanceof Error ? e.message : 'Gagal memuat data.'))
+      .finally(() => setIsLoading(false));
+  }, []);
 
   // Filter
   const filteredData = data.filter((item) =>
@@ -42,6 +65,26 @@ export default function KapsterListPage() {
     setSelectedKapster(kapster);
     setIsDeleteOpen(true);
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
+        <Loader2 className="w-9 h-9 text-[#1E65E2] animate-spin" />
+        <p className="text-[13px] text-[#6B7280]">Memuat data kapster...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+        <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center">
+          <AlertCircle className="w-7 h-7 text-red-400" />
+        </div>
+        <p className="text-[14px] font-semibold text-[#374151]">{error}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full flex flex-col gap-6">
@@ -112,7 +155,7 @@ export default function KapsterListPage() {
         </div>
       </div>
 
-      {/* Delete Modal — extracted component */}
+      {/* Delete Modal */}
       {isDeleteOpen && selectedKapster && (
         <DeleteKapsterModal
           kapster={selectedKapster}

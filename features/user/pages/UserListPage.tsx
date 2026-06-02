@@ -1,11 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSearch } from '@/shared/context/SearchContext';
-import { Edit, Trash2, Plus, ChevronLeft, ChevronRight, Eye, SlidersHorizontal } from 'lucide-react';
+import { Edit, Trash2, Plus, ChevronLeft, ChevronRight, Eye, SlidersHorizontal, Loader2, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 import type { User } from '../types/user.types';
-import { INITIAL_USER_DATA, BARBERSHOP_OPTIONS, REGION_OPTIONS } from '../constants/mock-data';
+import { useUserList } from '../hooks/useUserList';
+import { fetchRegions } from '@/features/region/services/region.service';
+import { fetchOutlets } from '@/features/outlet/services/outlet.service';
 import { DeleteUserModal } from '../components/DeleteUserModal';
 import { UserFilterModal } from '../components/UserFilterModal';
 import type { UserFilters } from '../components/UserFilterModal';
@@ -22,12 +24,25 @@ const EMPTY_FILTERS: UserFilters = { roles: [], regions: [], barbershops: [] };
 
 export default function UserListPage() {
   const { searchQuery } = useSearch();
-  const [data, setData] = useState<User[]>(INITIAL_USER_DATA);
+  const { data, isLoading, error, removeUser } = useUserList();
   const [currentPage, setCurrentPage] = useState(1);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [activeFilters, setActiveFilters] = useState<UserFilters>(EMPTY_FILTERS);
+
+  // Dynamic filter options from API
+  const [regionOptions, setRegionOptions] = useState<{ value: string; label: string }[]>([]);
+  const [barbershopOptions, setBarbershopOptions] = useState<{ value: string; label: string; regionId?: string }[]>([]);
+
+  useEffect(() => {
+    fetchRegions()
+      .then((regions) => setRegionOptions(regions.map((r) => ({ value: r.id, label: r.name }))))
+      .catch(() => {});
+    fetchOutlets()
+      .then((outlets) => setBarbershopOptions(outlets.map((b) => ({ value: b.id, label: b.name, regionId: b.region?.name }))))
+      .catch(() => {});
+  }, []);
 
   const activeFilterCount = activeFilters.roles.length + activeFilters.regions.length + activeFilters.barbershops.length;
 
@@ -45,22 +60,24 @@ export default function UserListPage() {
       return false;
     }
 
-    // Region filter — match by regionName to region label
+    // Region filter — match by regionName/region.name to region label
     if (activeFilters.regions.length > 0) {
-      const selectedRegionLabels: string[] = REGION_OPTIONS
+      const selectedRegionLabels: string[] = regionOptions
         .filter((r) => activeFilters.regions.includes(r.value))
         .map((r) => r.label);
-      if (!item.regionName || !selectedRegionLabels.includes(item.regionName)) {
+      const userRegion = item.regionName ?? item.region?.name;
+      if (!userRegion || !selectedRegionLabels.includes(userRegion)) {
         return false;
       }
     }
 
-    // Barbershop filter — match by barbershopName to barbershop label
+    // Barbershop filter — match by barbershopName/barbershop.name to barbershop label
     if (activeFilters.barbershops.length > 0) {
-      const selectedBsLabels: string[] = BARBERSHOP_OPTIONS
+      const selectedBsLabels: string[] = barbershopOptions
         .filter((b) => activeFilters.barbershops.includes(b.value))
         .map((b) => b.label);
-      if (!item.barbershopName || !selectedBsLabels.includes(item.barbershopName)) {
+      const userBarbershop = item.barbershopName ?? item.barbershop?.name;
+      if (!userBarbershop || !selectedBsLabels.includes(userBarbershop)) {
         return false;
       }
     }
@@ -77,7 +94,7 @@ export default function UserListPage() {
   // Handlers
   const handleDelete = () => {
     if (!selectedUser) return;
-    setData(data.filter((item) => item.id !== selectedUser.id));
+    removeUser(selectedUser.id);
     setIsDeleteOpen(false);
     setSelectedUser(null);
   };
@@ -96,6 +113,26 @@ export default function UserListPage() {
     setActiveFilters(EMPTY_FILTERS);
     setCurrentPage(1);
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
+        <Loader2 className="w-9 h-9 text-[#1E65E2] animate-spin" />
+        <p className="text-[13px] text-[#6B7280]">Memuat data user...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+        <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center">
+          <AlertCircle className="w-7 h-7 text-red-400" />
+        </div>
+        <p className="text-[14px] font-semibold text-[#374151]">{error}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full flex flex-col gap-6">
@@ -135,7 +172,7 @@ export default function UserListPage() {
             </span>
           ))}
           {activeFilters.regions.map((r) => {
-            const label = REGION_OPTIONS.find((opt) => opt.value === r)?.label ?? r;
+            const label = regionOptions.find((opt) => opt.value === r)?.label ?? r;
             return (
               <span key={`region-${r}`} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 text-[11px] font-semibold">
                 {label}
@@ -143,7 +180,7 @@ export default function UserListPage() {
             );
           })}
           {activeFilters.barbershops.map((b) => {
-            const label = BARBERSHOP_OPTIONS.find((opt) => opt.value === b)?.label ?? b;
+            const label = barbershopOptions.find((opt) => opt.value === b)?.label ?? b;
             return (
               <span key={`bs-${b}`} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-semibold">
                 {label}
@@ -184,8 +221,8 @@ export default function UserListPage() {
                       {item.role}
                     </span>
                   </td>
-                  <td className="py-4 px-6 text-[13px] text-[#374151] whitespace-nowrap">{item.regionName ?? <span className="text-[#D1D5DB]">—</span>}</td>
-                  <td className="py-4 px-6 text-[13px] text-[#374151] whitespace-nowrap">{item.barbershopName ?? <span className="text-[#D1D5DB]">—</span>}</td>
+                  <td className="py-4 px-6 text-[13px] text-[#374151] whitespace-nowrap">{item.regionName ?? item.region?.name ?? <span className="text-[#D1D5DB]">—</span>}</td>
+                  <td className="py-4 px-6 text-[13px] text-[#374151] whitespace-nowrap">{item.barbershopName ?? item.barbershop?.name ?? <span className="text-[#D1D5DB]">—</span>}</td>
                   <td className="py-4 px-6 text-[13px] text-[#374151] whitespace-nowrap">
                     {item.shiftStart && item.shiftEnd ? `${item.shiftStart} – ${item.shiftEnd}` : <span className="text-[#D1D5DB]">—</span>}
                   </td>
@@ -243,4 +280,3 @@ export default function UserListPage() {
     </div>
   );
 }
-

@@ -1,18 +1,34 @@
 'use client';
 
 import Link from 'next/link';
-import { Edit, Trash2, ArrowLeft, Shield, Mail, Clock, Calendar } from 'lucide-react';
+import { Edit, Trash2, ArrowLeft, Shield, Mail, Clock, Calendar, Loader2, AlertCircle } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
-import { INITIAL_USER_DATA } from '../constants/mock-data';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { fetchUsers } from '../services/user.service';
 import { DeleteUserModal } from '../components/DeleteUserModal';
+import type { User } from '../types/user.types';
 
 export default function UserDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-  
-  const user = INITIAL_USER_DATA.find(u => u.id === id) || INITIAL_USER_DATA[0];
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchUsers()
+      .then((users) => {
+        const found = users.find((u) => u.id === id);
+        if (!found) {
+          setLoadError('User tidak ditemukan.');
+          return;
+        }
+        setUser(found);
+      })
+      .catch((e: unknown) => setLoadError(e instanceof Error ? e.message : 'Gagal memuat data.'))
+      .finally(() => setIsLoading(false));
+  }, [id]);
 
   const handleDelete = () => {
     setIsDeleteOpen(false);
@@ -29,6 +45,32 @@ export default function UserDetailPage() {
     ADMIN: 'bg-blue-100 text-blue-700 border-blue-200',
     EMPLOYEE: 'bg-emerald-100 text-emerald-700 border-emerald-200',
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
+        <Loader2 className="w-9 h-9 text-[#1E65E2] animate-spin" />
+        <p className="text-[13px] text-[#6B7280]">Memuat data user...</p>
+      </div>
+    );
+  }
+
+  if (loadError || !user) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+        <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center">
+          <AlertCircle className="w-7 h-7 text-red-400" />
+        </div>
+        <p className="text-[14px] font-semibold text-[#374151]">{loadError ?? 'User tidak ditemukan'}</p>
+        <button onClick={() => router.back()} className="flex items-center gap-2 text-[#1E65E2] text-[13px] font-medium hover:underline">
+          <ArrowLeft className="w-4 h-4" /> Kembali
+        </button>
+      </div>
+    );
+  }
+
+  const regionDisplay = user.regionName ?? user.region?.name ?? 'Semua Wilayah';
+  const barbershopDisplay = user.barbershopName ?? user.barbershop?.name ?? 'Semua Cabang';
 
   return (
     <div className="w-full flex flex-col gap-6">
@@ -85,11 +127,11 @@ export default function UserDetailPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-[#F8FAFC] p-4 rounded-xl border border-[#E2E8F0]">
                     <span className="text-[12px] font-medium text-[#64748B] uppercase tracking-wider">Region</span>
-                    <p className="text-[15px] font-semibold text-[#1E293B] mt-1">{user.regionName || 'Semua Wilayah'}</p>
+                    <p className="text-[15px] font-semibold text-[#1E293B] mt-1">{regionDisplay}</p>
                   </div>
                   <div className="bg-[#F8FAFC] p-4 rounded-xl border border-[#E2E8F0]">
                     <span className="text-[12px] font-medium text-[#64748B] uppercase tracking-wider">Barbershop</span>
-                    <p className="text-[15px] font-semibold text-[#1E293B] mt-1">{user.barbershopName || 'Semua Cabang'}</p>
+                    <p className="text-[15px] font-semibold text-[#1E293B] mt-1">{barbershopDisplay}</p>
                   </div>
                 </div>
               </div>
@@ -115,7 +157,7 @@ export default function UserDetailPage() {
                     </div>
                     <div>
                       <span className="text-[12px] font-medium text-[#64748B] block">Terdaftar Pada</span>
-                      <p className="text-[14px] font-semibold text-[#1E293B]">{formatDate(user.createdAt)}</p>
+                      <p className="text-[14px] font-semibold text-[#1E293B]">{user.createdAt ? formatDate(user.createdAt) : '—'}</p>
                     </div>
                   </div>
                 </div>

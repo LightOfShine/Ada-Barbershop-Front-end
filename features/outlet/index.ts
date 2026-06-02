@@ -17,6 +17,7 @@ export { useOutletDetail } from './hooks/useOutletDetail';
 export {
   fetchOutlets,
   createOutlet,
+  deleteOutlet,
   fetchEmployees,
 } from './services/outlet.service';
 

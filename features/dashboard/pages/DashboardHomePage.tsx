@@ -1,9 +1,14 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { PieChart, Pie, Cell, Tooltip } from 'recharts';
-import { UserCircle, Briefcase, ArrowRight } from 'lucide-react';
+import { UserCircle, Briefcase, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
 import { useSearch } from '@/shared/context/SearchContext';
+import { fetchUsersByRole } from '@/features/user/services/user.service';
+import { fetchOutlets } from '@/features/outlet/services/outlet.service';
+import type { User } from '@/features/user/types/user.types';
+import type { Barbershop } from '@/features/outlet/types/outlet.types';
 
 // Gunakan dynamic import dengan ssr:false agar recharts tidak error di server
 const ResponsiveContainer = dynamic(
@@ -11,6 +16,7 @@ const ResponsiveContainer = dynamic(
   { ssr: false }
 );
 
+// Data yang masih belum ada endpoint khusus tetap di-mock
 const ATTENDANCE_DATA = [
   { name: 'Masuk', value: 8, color: '#60A5FA', percent: '72.7%' },
   { name: 'Izin', value: 1, color: '#FCD34D', percent: '9.1%' },
@@ -24,28 +30,51 @@ const HISTORY_DATA = [
   { admin: 'Admin 1', date: '06/04/26', kap1: 'Reyhan', kap2: 'Bagas' },
 ];
 
-const KAPSTER_DATA = [
-  { name: 'Ryan Gabriel', id: '14001112', phone: '081262773946', outlet: 'Gumilir', shift: 'Siang', email: 'ryangabriel@gmail.com' },
-  { name: 'Ryan Gabriel Togar Simamora', id: '14001111', phone: '081262773946', outlet: 'Arca', shift: 'Siang', email: 'ryan@gmail.com' },
-  { name: 'Joko Santoso', id: '1400110', phone: '081345678901', outlet: 'Kroya', shift: 'Pagi', email: '' },
-  { name: 'Hendra Saputra', id: '1400108', phone: '082298765432', outlet: 'Tidar', shift: 'Pagi', email: '' },
-  { name: 'Irfan Maulana', id: '1400109', phone: '085612398765', outlet: 'Gumilir', shift: 'Siang', email: '' },
-];
-
-const OUTLET_DATA = [
-  { no: 1, name: 'Gumilir', count: 3 },
-  { no: 2, name: 'Kroya', count: 3 },
-  { no: 3, name: 'Rinjani', count: 2 },
-  { no: 4, name: 'Tidar', count: 1 },
-  { no: 5, name: 'Tendean', count: 0 },
-  { no: 6, name: 'Jawa', count: 1 },
-  { no: 7, name: 'Jl Laut', count: 0 },
-];
-
 export default function DashboardHomePage() {
   const { searchQuery } = useSearch();
-
   const lowerQuery = searchQuery.toLowerCase();
+
+  const [kapsters, setKapsters] = useState<User[]>([]);
+  const [outlets, setOutlets] = useState<Barbershop[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    Promise.all([
+      fetchUsersByRole('EMPLOYEE'),
+      fetchOutlets()
+    ])
+    .then(([employeesData, outletsData]) => {
+      setKapsters(employeesData);
+      setOutlets(outletsData);
+    })
+    .catch((e: unknown) => {
+      setError(e instanceof Error ? e.message : 'Gagal memuat data dashboard.');
+    })
+    .finally(() => {
+      setIsLoading(false);
+    });
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
+        <Loader2 className="w-9 h-9 text-[#1E65E2] animate-spin" />
+        <p className="text-[13px] text-[#6B7280]">Memuat dashboard...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+        <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center">
+          <AlertCircle className="w-7 h-7 text-red-400" />
+        </div>
+        <p className="text-[14px] font-semibold text-[#374151]">{error}</p>
+      </div>
+    );
+  }
 
   const filteredHistory = HISTORY_DATA.filter(row => 
     row.admin.toLowerCase().includes(lowerQuery) || 
@@ -53,13 +82,13 @@ export default function DashboardHomePage() {
     row.kap2.toLowerCase().includes(lowerQuery)
   );
 
-  const filteredKapsters = KAPSTER_DATA.filter(row => 
+  const filteredKapsters = kapsters.filter(row => 
     row.name.toLowerCase().includes(lowerQuery) || 
-    row.outlet.toLowerCase().includes(lowerQuery) ||
-    row.shift.toLowerCase().includes(lowerQuery)
+    (row.barbershop?.name || '').toLowerCase().includes(lowerQuery) ||
+    (row.shiftStart || '').toLowerCase().includes(lowerQuery)
   );
 
-  const filteredOutlets = OUTLET_DATA.filter(row => 
+  const filteredOutlets = outlets.filter(row => 
     row.name.toLowerCase().includes(lowerQuery)
   );
 
@@ -77,7 +106,7 @@ export default function DashboardHomePage() {
             </div>
             <div>
               <p className="text-[13px] font-semibold text-[#3B82F6] uppercase tracking-wide">Total Kapster</p>
-              <h2 className="text-[32px] font-bold text-[#1E293B] leading-none mt-1">11</h2>
+              <h2 className="text-[32px] font-bold text-[#1E293B] leading-none mt-1">{kapsters.length}</h2>
             </div>
           </div>
         </div>
@@ -90,7 +119,7 @@ export default function DashboardHomePage() {
             </div>
             <div>
               <p className="text-[13px] font-semibold text-[#3B82F6] uppercase tracking-wide">Jumlah Outlet</p>
-              <h2 className="text-[32px] font-bold text-[#1E293B] leading-none mt-1">12</h2>
+              <h2 className="text-[32px] font-bold text-[#1E293B] leading-none mt-1">{outlets.length}</h2>
             </div>
           </div>
         </div>
@@ -177,7 +206,7 @@ export default function DashboardHomePage() {
                     <td className="py-3 px-2 text-[#3B82F6] font-semibold">{row.kap2}</td>
                   </tr>
                 )) : (
-                  <tr><td colSpan={5} className="py-4 text-center text-slate-400">Dimensi data riwayat tidak ditemukan.</td></tr>
+                  <tr><td colSpan={5} className="py-4 text-center text-slate-400">Data riwayat tidak ditemukan.</td></tr>
                 )}
               </tbody>
             </table>
@@ -207,10 +236,12 @@ export default function DashboardHomePage() {
                 {filteredKapsters.length > 0 ? filteredKapsters.map((row, idx) => (
                   <tr key={idx} className="border-b border-[#F8FAFC] last:border-0 hover:bg-[#F8FAFC] transition-colors">
                     <td className="py-3 px-2 text-[#475569] font-medium">{row.name}</td>
-                    <td className="py-3 px-2 text-[#64748B]">{row.id}</td>
-                    <td className="py-3 px-2 text-[#64748B]">{row.phone}</td>
-                    <td className="py-3 px-2 text-[#64748B]">{row.outlet}</td>
-                    <td className="py-3 px-2 text-[#64748B]">{row.shift}</td>
+                    <td className="py-3 px-2 text-[#64748B]">{row.id.slice(0, 8)}</td>
+                    <td className="py-3 px-2 text-[#64748B]">—</td>
+                    <td className="py-3 px-2 text-[#64748B]">{row.barbershopName ?? row.barbershop?.name ?? '—'}</td>
+                    <td className="py-3 px-2 text-[#64748B]">
+                      {row.shiftStart && row.shiftEnd ? `${row.shiftStart}–${row.shiftEnd}` : '—'}
+                    </td>
                     <td className="py-3 px-2 text-[#64748B] max-w-[150px] truncate" title={row.email}>{row.email}</td>
                   </tr>
                 )) : (
@@ -230,15 +261,15 @@ export default function DashboardHomePage() {
                 <tr className="text-[#3B82F6] font-medium border-b border-[#F1F5F9]">
                   <th className="pb-3 px-2 font-semibold">No</th>
                   <th className="pb-3 px-2 font-semibold">Outlet</th>
-                  <th className="pb-3 px-2 font-semibold text-center whitespace-nowrap">Jumlah Kapster</th>
+                  <th className="pb-3 px-2 font-semibold text-center whitespace-nowrap">Region</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredOutlets.length > 0 ? filteredOutlets.map((row) => (
-                  <tr key={row.no} className="border-b border-[#F8FAFC] last:border-0 hover:bg-[#F8FAFC] transition-colors">
-                    <td className="py-3 px-2 text-[#64748B]">{row.no}</td>
+                {filteredOutlets.length > 0 ? filteredOutlets.map((row, index) => (
+                  <tr key={row.id} className="border-b border-[#F8FAFC] last:border-0 hover:bg-[#F8FAFC] transition-colors">
+                    <td className="py-3 px-2 text-[#64748B]">{index + 1}</td>
                     <td className="py-3 px-2 text-[#475569] font-medium">{row.name}</td>
-                    <td className="py-3 px-2 text-[#64748B] text-center">{row.count}</td>
+                    <td className="py-3 px-2 text-[#64748B] text-center">{row.region?.name ?? '—'}</td>
                   </tr>
                 )) : (
                   <tr><td colSpan={3} className="py-4 text-center text-slate-400">Tidak ada outlet yang cocok.</td></tr>
