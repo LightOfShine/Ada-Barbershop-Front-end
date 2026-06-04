@@ -99,7 +99,7 @@ export default function KapsterEditPage() {
         body: JSON.stringify(body),
       });
 
-      router.push(`/dashboard/kapster/${id}`);
+      window.location.href = `/dashboard/kapster/${id}`;
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Gagal menyimpan perubahan.');
     } finally {

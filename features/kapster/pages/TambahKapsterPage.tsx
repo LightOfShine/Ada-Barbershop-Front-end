@@ -21,7 +21,7 @@ export default function TambahKapsterPage() {
     shiftStart: '',
     shiftEnd: ''
   });
-  
+
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [outlets, setOutlets] = useState<{ value: string; label: string }[]>([]);
@@ -29,7 +29,7 @@ export default function TambahKapsterPage() {
   useEffect(() => {
     fetchOutlets()
       .then((data) => setOutlets(data.map((b) => ({ value: b.id, label: b.name }))))
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -55,7 +55,7 @@ export default function TambahKapsterPage() {
         shiftStart: formData.shiftStart,
         shiftEnd: formData.shiftEnd,
       });
-      window.location.href = '/dashboard/kapster';
+      router.push('/dashboard/kapster');
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Gagal menambahkan kapster.');
     } finally {

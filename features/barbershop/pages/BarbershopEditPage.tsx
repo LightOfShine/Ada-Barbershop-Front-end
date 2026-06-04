@@ -5,24 +5,29 @@ import { useParams, useRouter } from 'next/navigation';
 import { Save, ArrowLeft, Loader2, AlertCircle } from 'lucide-react';
 import { fetchOutlets } from '@/features/outlet/services/outlet.service';
 import type { Barbershop } from '@/features/outlet/types/outlet.types';
+import { fetchRegions } from '@/features/region/services/region.service';
+import type { Region } from '@/features/region/types/region.types';
 
 export default function BarbershopEditPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const [outlet, setOutlet] = useState<Barbershop | null>(null);
+  const [regions, setRegions] = useState<Region[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     name: '',
     address: '',
-    regionName: '',
+    regionId: '',
   });
 
   useEffect(() => {
-    fetchOutlets()
-      .then((list) => {
-        const found = list.find((b) => b.id === id);
+    Promise.all([fetchOutlets(), fetchRegions()])
+      .then(([list, regionList]) => {
+        setRegions(regionList);
+        const found = list.find((b) => String(b.id) === String(id));
         if (!found) {
           setError('Outlet tidak ditemukan.');
           return;
@@ -31,7 +36,7 @@ export default function BarbershopEditPage() {
         setFormData({
           name: found.name ?? '',
           address: found.address ?? '',
-          regionName: found.region?.name ?? '',
+          regionId: String((found as Record<string, unknown>).regionId ?? (found.region as Record<string, unknown> | undefined)?.id ?? ''),
         });
       })
       .catch(() => setError('Gagal memuat data outlet.'))
@@ -43,13 +48,30 @@ export default function BarbershopEditPage() {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSave = () => {
-    if (!formData.name) {
-      alert('Nama outlet wajib diisi.');
+  const handleSave = async () => {
+    if (!formData.name.trim()) {
+      setError('Nama outlet wajib diisi.');
       return;
     }
-    alert('Perubahan outlet berhasil disimpan!');
-    router.push(`/dashboard/outlet/${id}`);
+    
+    setIsSaving(true);
+    setError(null);
+    try {
+      const { apiFetch } = await import('@/shared/services/api-client');
+      await apiFetch(`/barbershops/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          name: formData.name.trim(),
+          address: formData.address.trim(),
+          regionId: formData.regionId || undefined,
+        }),
+      });
+      window.location.href = `/dashboard/outlet/${id}`;
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Gagal menyimpan perubahan.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   if (isLoading) {
@@ -103,7 +125,19 @@ export default function BarbershopEditPage() {
 
           <div>
             <label className="block text-[13px] font-medium text-[#8B98BA] mb-2">Region / Wilayah</label>
-            <input name="regionName" value={formData.regionName} onChange={handleChange} className="w-full h-[44px] px-4 border border-[#E5E7EB] rounded-[8px] text-[15px] font-medium text-[#374151] focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors bg-white" />
+            <select
+              name="regionId"
+              value={formData.regionId}
+              onChange={handleChange}
+              className="w-full h-[44px] px-4 border border-[#E5E7EB] rounded-[8px] text-[15px] font-medium text-[#374151] focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors bg-white appearance-none"
+            >
+              <option value="">-- Pilih Wilayah --</option>
+              {regions.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.name}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>
@@ -112,12 +146,23 @@ export default function BarbershopEditPage() {
           </div>
         </div>
 
+        {error && (
+          <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-[13px] text-red-600">
+            {error}
+          </div>
+        )}
+
         <div className="mt-12 flex items-center gap-4 pt-6 border-t border-[#F3F4F6]">
           <button onClick={() => router.back()} className="flex items-center gap-2 px-6 py-2.5 text-[14px] font-medium text-[#4B5563] bg-white border border-[#E5E7EB] hover:bg-[#F9FAFB] rounded-lg transition-colors">
             <ArrowLeft className="w-4 h-4" /> Batal
           </button>
-          <button onClick={handleSave} className="flex items-center gap-2 px-6 py-2.5 text-[14px] font-medium text-white bg-[#1E65E2] hover:bg-blue-700 rounded-lg transition-colors">
-            <Save className="w-4 h-4" /> Simpan Perubahan
+          <button 
+            onClick={handleSave} 
+            disabled={isSaving}
+            className="flex items-center gap-2 px-6 py-2.5 text-[14px] font-medium text-white bg-[#1E65E2] hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-60"
+          >
+            {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            {isSaving ? 'Menyimpan...' : 'Simpan Perubahan'}
           </button>
         </div>
       </div>

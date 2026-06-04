@@ -51,7 +51,7 @@ export default function RegionEditPage() {
         method: 'PUT',
         body: JSON.stringify({ name: formData.name.trim() }),
       });
-      router.push('/dashboard/regions');
+      window.location.href = '/dashboard/regions';
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Gagal menyimpan perubahan.');
     } finally {

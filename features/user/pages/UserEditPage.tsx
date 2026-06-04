@@ -100,7 +100,7 @@ export default function UserEditPage() {
         method: 'PUT',
         body: JSON.stringify(body),
       });
-      router.push('/dashboard/users');
+      window.location.href = '/dashboard/users';
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Gagal menyimpan perubahan.');
     } finally {

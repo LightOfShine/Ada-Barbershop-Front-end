@@ -10,6 +10,7 @@ export const ENDPOINTS = {
   REGIONS: '/regions',
   BARBERSHOPS: '/barbershops',
   USERS: '/users',
+  COMPANIES: '/companies',
   ATTENDANCE: {
     CHECK_IN: '/attendance/check-in',
     CHECK_OUT: '/attendance/check-out',
@@ -18,4 +19,10 @@ export const ENDPOINTS = {
     ATTENDANCE: '/export/attendance',
     REWARD: '/export/reward',
   },
+  REWARDS: {
+    RULES: '/api/rewards/rules',
+    CALCULATE: '/api/rewards/calculate',
+    REPORT: '/api/rewards/report',
+  },
 } as const;
+

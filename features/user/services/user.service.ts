@@ -27,8 +27,8 @@ export async function fetchUsersByRole(role: string): Promise<User[]> {
 }
 
 /**
- * POST /auth/register — create a new user.
- * Only OWNER/ADMIN can call this; the JWT must be sent automatically by apiFetch.
+ * POST /users — create a new user.
+ * API v2: endpoint is POST /users (not /auth/register).
  */
 export async function registerUser(data: UserFormData): Promise<User> {
   const body: Record<string, unknown> = {
@@ -42,10 +42,11 @@ export async function registerUser(data: UserFormData): Promise<User> {
   if (data.shiftStart) body.shiftStart = data.shiftStart;
   if (data.shiftEnd) body.shiftEnd = data.shiftEnd;
 
-  const raw = await apiFetch<User | { data: User }>(ENDPOINTS.AUTH.REGISTER, {
+  const raw = await apiFetch<User | { data: User }>(ENDPOINTS.USERS, {
     method: 'POST',
     body: JSON.stringify(body),
   });
   const user = (raw as { data: User })?.data ?? (raw as User);
   return normalizeUser(user);
 }
+

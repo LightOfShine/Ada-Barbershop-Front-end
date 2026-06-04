@@ -17,3 +17,4 @@ export const MENU_ITEMS = [
   { name: 'Company', path: '/dashboard/company', icon: Building2 },
   { name: 'Export', path: '/dashboard/export', icon: FileText },
 ] as const;
+
