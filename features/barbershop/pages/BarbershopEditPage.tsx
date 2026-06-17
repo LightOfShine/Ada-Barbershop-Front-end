@@ -36,7 +36,7 @@ export default function BarbershopEditPage() {
         setFormData({
           name: found.name ?? '',
           address: found.address ?? '',
-          regionId: String((found as Record<string, unknown>).regionId ?? (found.region as Record<string, unknown> | undefined)?.id ?? ''),
+          regionId: String((found as unknown as Record<string, unknown>).regionId ?? ((found as unknown as Record<string, unknown>).region as Record<string, unknown> | undefined)?.id ?? ''),
         });
       })
       .catch(() => setError('Gagal memuat data outlet.'))

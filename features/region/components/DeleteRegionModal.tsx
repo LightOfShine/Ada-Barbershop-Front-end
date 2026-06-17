@@ -20,7 +20,7 @@ export function DeleteRegionModal({ region, onClose, onConfirm }: DeleteRegionMo
           <h3 className="text-[18px] font-semibold text-[#1F2937] mb-2">Hapus Region?</h3>
           <p className="text-[13px] text-[#6B7280]">
             Apakah Anda yakin ingin menghapus region <strong>{region.name}</strong>?
-            {region.barbershopCount > 0 && (
+            {(region.barbershopCount ?? 0) > 0 && (
               <> Region ini memiliki <strong>{region.barbershopCount} barbershop</strong> yang terkait.</>
             )}
             {' '}Data yang dihapus tidak dapat dikembalikan.
